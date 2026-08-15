@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Public Transport Tracking</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+</head>
+
+<body>
+
+    <header>
+        <nav>
+            <h2>🚌 Transport Tracker</h2>
+
+            <ul>
+                <li><a href="/">Home</a></li>
+                <li><a href="#buses">Buses</a></li>
+                <li><a href="#mapSection">Map</a></li>
+                <li><a href="#about">About</a></li>
+                <li><a href="/admin">Admin</a></li>
+            </ul>
+        </nav>
+
+        <div class="hero">
+            <h1>Real-Time Public Transport Tracking</h1>
+            <p>Small Cities Transport Management System</p>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <h2 id="clock"></h2>
+
+        <div class="cards">
+
+            <div class="card">
+                <h3>Total Buses</h3>
+                <p>{{ total }}</p>
+            </div>
+
+            <div class="card">
+                <h3>Running</h3>
+                <p>{{ running }}</p>
+            </div>
+
+            <div class="card">
+                <h3>Stopped</h3>
+                <p>{{ stopped }}</p>
+            </div>
+
+        </div>
+
+        <input
+            type="text"
+            id="search"
+            placeholder="🔍 Search Bus Number..."
+            onkeyup="searchBus()">
+
+        <h2 id="buses">Available Buses</h2>
+
+        <table id="busTable">
+
+            <tr>
+                <th>Bus Number</th>
+                <th>Route</th>
+                <th>Status</th>
+            </tr>
+
+            {% for bus in buses %}
+            <tr>
+                <td>{{ bus.bus_no }}</td>
+                <td>{{ bus.route }}</td>
+
+                <td>
+                    {% if bus.status == "Running" %}
+                    <span class="running">🟢 Running</span>
+                    {% else %}
+                    <span class="stopped">🔴 Stopped</span>
+                    {% endif %}
+                </td>
+
+            </tr>
+            {% endfor %}
+
+        </table>
+
+        <h2 id="mapSection">Live Bus Location</h2>
+
+        <div id="map"></div>
+
+        <div class="about" id="about">
+
+            <h2>About Project</h2>
+
+            <p>
+                This project is developed using Flask, SQLite,
+                HTML, CSS, JavaScript and OpenStreetMap
+                to track buses in real time.
+            </p>
+
+        </div>
+
+    </div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <script>
+
+        // Clock
+        function updateClock() {
+            document.getElementById("clock").innerHTML =
+                new Date().toLocaleString();
+        }
+
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Search
+        function searchBus() {
+
+            let input = document.getElementById("search").value.toUpperCase();
+
+            let table = document.getElementById("busTable");
+
+            let tr = table.getElementsByTagName("tr");
+
+            for (let i = 1; i < tr.length; i++) {
+
+                let td = tr[i].getElementsByTagName("td")[0];
+
+                if (td) {
+
+                    let txt = td.textContent || td.innerText;
+
+                    tr[i].style.display =
+                        txt.toUpperCase().indexOf(input) > -1
+                            ? ""
+                            : "none";
+                }
+            }
+        }
+
+        // Map
+        var map = L.map("map").setView([11.0168, 76.9558], 12);
+
+        L.tileLayer(
+            "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+            {
+                attribution: "&copy; OpenStreetMap contributors"
+            }
+        ).addTo(map);
+
+        // Bus icon
+        var busIcon = L.icon({
+            iconUrl:
+                "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png",
+
+            shadowUrl:
+                "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34]
+        });
+
+        var markers = [];
+
+        {% for bus in buses %}
+
+        var marker = L.marker(
+            [{{ bus.latitude }}, {{ bus.longitude }}],
+            {
+                icon: busIcon
+            }
+        ).addTo(map);
+
+        marker.bindPopup(
+            "<b>🚌 Bus {{ bus.bus_no }}</b><br>" +
+            "<b>Route:</b> {{ bus.route }}<br>" +
+            "<b>Status:</b> {{ bus.status }}"
+        );
+
+        markers.push(marker);
+
+        {% endfor %}
+
+        if (markers.length > 0) {
+
+            var group = L.featureGroup(markers);
+
+            map.fitBounds(group.getBounds().pad(0.2));
+
+        }
+
+        setTimeout(function () {
+
+            map.invalidateSize();
+
+        }, 500);
+
+    </script>
+
+</body>
+
+</html>
